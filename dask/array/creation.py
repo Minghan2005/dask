@@ -356,23 +356,41 @@ def linspace(
         div = 1
 
     step = float(range_) / div
+    use_global_indices = (
+        np.isscalar(start)
+        and np.isscalar(stop)
+        and (not np.isfinite(start) or not np.isfinite(stop))
+    )
 
     name = "linspace-" + tokenize((start, stop, num, endpoint, chunks, dtype))
 
     dsk = {}
     blockstart = start
+    offset = 0
 
     for i, bs in enumerate(chunks[0]):
-        bs_space = bs - 1 if endpoint else bs
-        blockstop = blockstart + (bs_space * step)
-        task = Task(
-            (name, i),
-            partial(chunk.linspace, endpoint=endpoint, dtype=dtype),
-            blockstart,
-            blockstop,
-            bs,
-        )
-        blockstart = blockstart + (step * bs)
+        if use_global_indices:
+            task = Task(
+                (name, i),
+                partial(chunk.linspace_chunk, endpoint=endpoint, dtype=dtype),
+                start,
+                stop,
+                num,
+                offset,
+                bs,
+            )
+            offset += bs
+        else:
+            bs_space = bs - 1 if endpoint else bs
+            blockstop = blockstart + (bs_space * step)
+            task = Task(
+                (name, i),
+                partial(chunk.linspace, endpoint=endpoint, dtype=dtype),
+                blockstart,
+                blockstop,
+                bs,
+            )
+            blockstart = blockstart + (step * bs)
         dsk[task.key] = task
 
     if retstep:

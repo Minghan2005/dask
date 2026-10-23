@@ -284,6 +284,36 @@ def linspace(start, stop, num, endpoint=True, dtype=None):
     return np.linspace(start, stop, num, endpoint=endpoint, dtype=dtype)
 
 
+def linspace_chunk(start, stop, total_num, offset, num, endpoint=True, dtype=None):
+    """Return one slice of a linspace using indices from the full sequence."""
+    calc_dtype = np.result_type(start, stop)
+    if not np.issubdtype(calc_dtype, np.inexact):
+        calc_dtype = np.dtype(float)
+
+    delta = np.subtract(stop, start, dtype=calc_dtype.type)
+    indices = np.arange(offset, offset + num, dtype=calc_dtype)
+    div = total_num - 1 if endpoint else total_num
+
+    if div > 0:
+        step = delta / div
+        if step == 0:
+            indices /= div
+            indices *= delta
+        else:
+            indices *= step
+    else:
+        indices *= delta
+
+    indices += start
+    if endpoint and total_num > 1 and offset + num == total_num:
+        indices[-1] = stop
+
+    if np.issubdtype(dtype, np.integer):
+        np.floor(indices, out=indices)
+
+    return indices.astype(dtype, copy=False)
+
+
 def astype(x, astype_dtype=None, **kwargs):
     return x.astype(astype_dtype, **kwargs)
 

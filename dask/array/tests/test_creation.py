@@ -188,6 +188,19 @@ def test_linspace(endpoint):
     assert_eq(darr, nparr)
 
 
+@pytest.mark.parametrize("start,stop", [(-np.inf, 0), (0, np.inf)])
+@pytest.mark.parametrize("endpoint", [True, False])
+@pytest.mark.parametrize("chunks", [1, 2, 3])
+def test_linspace_with_infinite_endpoint(start, stop, endpoint, chunks):
+    with np.errstate(invalid="ignore"):
+        expected = np.linspace(start, stop, num=3, endpoint=endpoint)
+        result = da.linspace(
+            start, stop, num=3, endpoint=endpoint, chunks=chunks
+        ).compute()
+
+    np.testing.assert_array_equal(result, expected)
+
+
 def test_arange():
     darr = da.arange(77, chunks=13)
     nparr = np.arange(77)
